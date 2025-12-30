@@ -364,16 +364,8 @@
         // Start the dashboard
         startAutoUpdate();
 
-        // Handle visibility change to pause/resume updates
-        document.addEventListener('visibilitychange', () => {
-            if (document.hidden) {
-                if (updateTimer) {
-                    clearInterval(updateTimer);
-                }
-            } else {
-                startAutoUpdate();
-            }
-        });
+        // Note: Visibility pause feature disabled for kiosk/fullscreen mode
+        // Dashboard will continuously update regardless of window state
     </script>
 </body>
 </html>

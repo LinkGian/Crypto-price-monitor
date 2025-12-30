@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Crypto Price Monitor</title>
+    <title>G's Price Monitor</title>
     <style>
         * {
             margin: 0;
@@ -15,34 +15,59 @@
         body {
             background-color: #000000;
             color: #00ff00;
-            font-family: 'Courier New', Courier, monospace;
-            padding: 40px;
+            font-family: Calibri, 'Trebuchet MS', sans-serif;
+            padding: 20px;
             min-height: 100vh;
             display: flex;
             flex-direction: column;
+            overflow: hidden;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 20px;
+            padding: 10px 20px;
         }
 
         h1 {
-            text-align: center;
-            font-size: 3.5em;
-            margin-bottom: 40px;
+            font-size: 3em;
+            margin: 0;
             text-shadow: 0 0 10px #00ff00;
-            letter-spacing: 3px;
+            letter-spacing: 2px;
+        }
+
+        .timestamp {
+            font-size: 1.2em;
+            margin: 5px 0 0 0;
+            padding: 0;
+            border: none;
+            text-align: right;
+        }
+
+        .timestamp.error {
+            color: #ff0000;
+            font-weight: bold;
         }
 
         .crypto-container {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
-            gap: 30px;
-            margin-bottom: 40px;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 20px;
+            flex: 1;
+            max-height: calc(100vh - 150px);
         }
 
         .crypto-card {
             border: 3px solid #00ff00;
-            padding: 30px;
+            padding: 15px 20px;
             border-radius: 10px;
             box-shadow: 0 0 20px rgba(0, 255, 0, 0.3);
             transition: all 0.3s ease;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
         }
 
         .crypto-card:hover {
@@ -51,30 +76,30 @@
         }
 
         .crypto-name {
-            font-size: 2.5em;
-            margin-bottom: 20px;
+            font-size: 2em;
+            margin-bottom: 10px;
             text-align: center;
             font-weight: bold;
         }
 
         .crypto-symbol {
-            font-size: 1.2em;
+            font-size: 1em;
             color: #00cc00;
             text-align: center;
-            margin-bottom: 20px;
+            margin-bottom: 15px;
         }
 
         .price {
-            font-size: 3em;
+            font-size: 2.2em;
             text-align: center;
-            margin: 20px 0;
+            margin: 10px 0;
             font-weight: bold;
         }
 
         .change {
-            font-size: 1.8em;
+            font-size: 1.4em;
             text-align: center;
-            margin: 15px 0;
+            margin: 10px 0;
         }
 
         .change.positive {
@@ -86,32 +111,19 @@
         }
 
         .stats {
-            margin-top: 20px;
-            font-size: 1.3em;
-            line-height: 1.8;
+            margin-top: 15px;
+            font-size: 1.1em;
+            line-height: 1.6;
         }
 
         .stat-row {
             display: flex;
             justify-content: space-between;
-            margin: 10px 0;
+            margin: 8px 0;
         }
 
         .stat-label {
             color: #00cc00;
-        }
-
-        .timestamp {
-            text-align: center;
-            font-size: 1.5em;
-            margin-top: 30px;
-            padding: 20px;
-            border-top: 2px solid #00ff00;
-        }
-
-        .timestamp.error {
-            color: #ff0000;
-            font-weight: bold;
         }
 
         .loading {
@@ -132,20 +144,23 @@
             .crypto-container {
                 grid-template-columns: repeat(2, 1fr);
             }
-        }
-
-        @media (max-width: 768px) {
-            .crypto-container {
-                grid-template-columns: 1fr;
-            }
             h1 {
                 font-size: 2.5em;
+            }
+            .crypto-name {
+                font-size: 1.8em;
+            }
+            .price {
+                font-size: 2em;
             }
         }
     </style>
 </head>
 <body>
-    <h1>⚡ CRYPTO PRICE MONITOR ⚡</h1>
+    <div class="header">
+        <h1>G's Price Monitor</h1>
+        <div id="timestamp" class="timestamp">Last Updated: --</div>
+    </div>
 
     <div id="loading" class="loading">Loading crypto data...</div>
     <div id="error" class="error-message" style="display: none;"></div>
@@ -153,8 +168,6 @@
     <div id="crypto-container" class="crypto-container" style="display: none;">
         <!-- Crypto cards will be inserted here -->
     </div>
-
-    <div id="timestamp" class="timestamp">Last Updated: --</div>
 
     <script>
         const CRYPTO_IDS = ['bitcoin', 'ethereum', 'zcash', 'chainlink'];

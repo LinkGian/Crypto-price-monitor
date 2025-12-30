@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Crypto Price Monitor</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            cursor: none; /* Hide cursor */
+        }
+
+        body {
+            background-color: #000000;
+            color: #00ff00;
+            font-family: 'Courier New', Courier, monospace;
+            padding: 40px;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        h1 {
+            text-align: center;
+            font-size: 3.5em;
+            margin-bottom: 40px;
+            text-shadow: 0 0 10px #00ff00;
+            letter-spacing: 3px;
+        }
+
+        .crypto-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            gap: 30px;
+            margin-bottom: 40px;
+        }
+
+        .crypto-card {
+            border: 3px solid #00ff00;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 0 20px rgba(0, 255, 0, 0.3);
+            transition: all 0.3s ease;
+        }
+
+        .crypto-card:hover {
+            box-shadow: 0 0 30px rgba(0, 255, 0, 0.5);
+            transform: scale(1.02);
+        }
+
+        .crypto-name {
+            font-size: 2.5em;
+            margin-bottom: 20px;
+            text-align: center;
+            font-weight: bold;
+        }
+
+        .crypto-symbol {
+            font-size: 1.2em;
+            color: #00cc00;
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        .price {
+            font-size: 3em;
+            text-align: center;
+            margin: 20px 0;
+            font-weight: bold;
+        }
+
+        .change {
+            font-size: 1.8em;
+            text-align: center;
+            margin: 15px 0;
+        }
+
+        .change.positive {
+            color: #00ff00;
+        }
+
+        .change.negative {
+            color: #ff0000;
+        }
+
+        .stats {
+            margin-top: 20px;
+            font-size: 1.3em;
+            line-height: 1.8;
+        }
+
+        .stat-row {
+            display: flex;
+            justify-content: space-between;
+            margin: 10px 0;
+        }
+
+        .stat-label {
+            color: #00cc00;
+        }
+
+        .timestamp {
+            text-align: center;
+            font-size: 1.5em;
+            margin-top: 30px;
+            padding: 20px;
+            border-top: 2px solid #00ff00;
+        }
+
+        .timestamp.error {
+            color: #ff0000;
+            font-weight: bold;
+        }
+
+        .loading {
+            text-align: center;
+            font-size: 2em;
+            margin-top: 50px;
+        }
+
+        .error-message {
+            color: #ff0000;
+            text-align: center;
+            font-size: 1.5em;
+            margin: 20px 0;
+            font-weight: bold;
+        }
+
+        @media (max-width: 1200px) {
+            .crypto-container {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
+        @media (max-width: 768px) {
+            .crypto-container {
+                grid-template-columns: 1fr;
+            }
+            h1 {
+                font-size: 2.5em;
+            }
+        }
+    </style>
+</head>
+<body>
+    <h1>⚡ CRYPTO PRICE MONITOR ⚡</h1>
+
+    <div id="loading" class="loading">Loading crypto data...</div>
+    <div id="error" class="error-message" style="display: none;"></div>
+
+    <div id="crypto-container" class="crypto-container" style="display: none;">
+        <!-- Crypto cards will be inserted here -->
+    </div>
+
+    <div id="timestamp" class="timestamp">Last Updated: --</div>
+
+    <script>
+        const CRYPTO_IDS = ['bitcoin', 'ethereum', 'zcash', 'chainlink'];
+        const API_URL = 'https://api.coingecko.com/api/v3/simple/price';
+        const UPDATE_INTERVAL = 45000; // 45 seconds
+
+        let updateTimer;
+        let hasError = false;
+
+        async function fetchCryptoData() {
+            try {
+                const params = new URLSearchParams({
+                    ids: CRYPTO_IDS.join(','),
+                    vs_currencies: 'usd',
+                    include_24hr_change: 'true',
+                    include_24hr_vol: 'true',
+                    include_last_updated_at: 'true'
+                });
+
+                const response = await fetch(`${API_URL}?${params}`);
+
+                if (!response.ok) {
+                    throw new Error(`API Error: ${response.status}`);
+                }
+
+                const data = await response.json();
+
+                // Fetch additional market data for high/low prices
+                const marketDataPromises = CRYPTO_IDS.map(async (id) => {
+                    const marketResponse = await fetch(
+                        `https://api.coingecko.com/api/v3/coins/${id}/market_chart?vs_currency=usd&days=1`
+                    );
+                    if (!marketResponse.ok) {
+                        throw new Error(`Market data error for ${id}`);
+                    }
+                    return marketResponse.json();
+                });
+
+                const marketData = await Promise.all(marketDataPromises);
+
+                return { priceData: data, marketData };
+            } catch (error) {
+                console.error('Error fetching crypto data:', error);
+                throw error;
+            }
+        }
+
+        function formatPrice(price) {
+            if (price >= 1000) {
+                return '$' + price.toLocaleString('en-US', {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2
+                });
+            } else if (price >= 1) {
+                return '$' + price.toFixed(4);
+            } else {
+                return '$' + price.toFixed(6);
+            }
+        }
+
+        function formatChange(change) {
+            const sign = change >= 0 ? '+' : '';
+            return `${sign}${change.toFixed(2)}%`;
+        }
+
+        function getCryptoDisplayName(id) {
+            const names = {
+                'bitcoin': 'Bitcoin',
+                'ethereum': 'Ethereum',
+                'zcash': 'Zcash',
+                'chainlink': 'Chainlink'
+            };
+            return names[id] || id;
+        }
+
+        function getCryptoSymbol(id) {
+            const symbols = {
+                'bitcoin': 'BTC',
+                'ethereum': 'ETH',
+                'zcash': 'ZEC',
+                'chainlink': 'LINK'
+            };
+            return symbols[id] || id.toUpperCase();
+        }
+
+        function calculate24hHighLow(marketPrices) {
+            if (!marketPrices || marketPrices.length === 0) {
+                return { high: 0, low: 0 };
+            }
+
+            const prices = marketPrices.map(p => p[1]);
+            return {
+                high: Math.max(...prices),
+                low: Math.min(...prices)
+            };
+        }
+
+        function displayCryptoData({ priceData, marketData }) {
+            const container = document.getElementById('crypto-container');
+            const loading = document.getElementById('loading');
+            const errorDiv = document.getElementById('error');
+
+            container.innerHTML = '';
+
+            CRYPTO_IDS.forEach((id, index) => {
+                const crypto = priceData[id];
+                if (!crypto) return;
+
+                const { high, low } = calculate24hHighLow(marketData[index]?.prices || []);
+
+                const card = document.createElement('div');
+                card.className = 'crypto-card';
+
+                const price = crypto.usd || 0;
+                const change24h = crypto.usd_24h_change || 0;
+                const changeClass = change24h >= 0 ? 'positive' : 'negative';
+
+                card.innerHTML = `
+                    <div class="crypto-name">${getCryptoDisplayName(id)}</div>
+                    <div class="crypto-symbol">(${getCryptoSymbol(id)})</div>
+                    <div class="price">${formatPrice(price)}</div>
+                    <div class="change ${changeClass}">${formatChange(change24h)}</div>
+                    <div class="stats">
+                        <div class="stat-row">
+                            <span class="stat-label">24h High:</span>
+                            <span>${formatPrice(high)}</span>
+                        </div>
+                        <div class="stat-row">
+                            <span class="stat-label">24h Low:</span>
+                            <span>${formatPrice(low)}</span>
+                        </div>
+                    </div>
+                `;
+
+                container.appendChild(card);
+            });
+
+            loading.style.display = 'none';
+            errorDiv.style.display = 'none';
+            container.style.display = 'grid';
+
+            updateTimestamp(false);
+            hasError = false;
+        }
+
+        function updateTimestamp(isError = false) {
+            const timestampDiv = document.getElementById('timestamp');
+            const now = new Date();
+            const timeString = now.toLocaleString('en-US', {
+                year: 'numeric',
+                month: 'short',
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit',
+                hour12: true
+            });
+
+            timestampDiv.textContent = `Last Updated: ${timeString}`;
+
+            if (isError) {
+                timestampDiv.classList.add('error');
+            } else {
+                timestampDiv.classList.remove('error');
+            }
+        }
+
+        function displayError(message) {
+            const loading = document.getElementById('loading');
+            const errorDiv = document.getElementById('error');
+            const container = document.getElementById('crypto-container');
+
+            loading.style.display = 'none';
+            errorDiv.textContent = `⚠ ERROR: ${message}`;
+            errorDiv.style.display = 'block';
+
+            if (container.innerHTML === '') {
+                container.style.display = 'none';
+            }
+
+            updateTimestamp(true);
+            hasError = true;
+        }
+
+        async function updateDashboard() {
+            try {
+                const data = await fetchCryptoData();
+                displayCryptoData(data);
+            } catch (error) {
+                displayError('Failed to fetch crypto data. Retrying...');
+            }
+        }
+
+        function startAutoUpdate() {
+            // Clear any existing timer
+            if (updateTimer) {
+                clearInterval(updateTimer);
+            }
+
+            // Initial update
+            updateDashboard();
+
+            // Set up recurring updates
+            updateTimer = setInterval(updateDashboard, UPDATE_INTERVAL);
+        }
+
+        // Start the dashboard
+        startAutoUpdate();
+
+        // Handle visibility change to pause/resume updates
+        document.addEventListener('visibilitychange', () => {
+            if (document.hidden) {
+                if (updateTimer) {
+                    clearInterval(updateTimer);
+                }
+            } else {
+                startAutoUpdate();
+            }
+        });
+    </script>
+</body>
+</html>

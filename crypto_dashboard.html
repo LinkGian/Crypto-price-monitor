@@ -77,20 +77,19 @@
 
         .crypto-name {
             font-size: 3em;
-            margin-bottom: 15px;
+            margin-bottom: 20px;
             text-align: center;
             font-weight: bold;
         }
 
         .crypto-symbol {
-            font-size: 1.4em;
-            color: #00cc00;
-            text-align: center;
-            margin-bottom: 20px;
+            font-size: 3em;
+            color: #00ff00;
+            font-weight: bold;
         }
 
         .price {
-            font-size: 3.5em;
+            font-size: 4em;
             text-align: center;
             margin: 15px 0;
             font-weight: bold;
@@ -216,16 +215,10 @@
         }
 
         function formatPrice(price) {
-            if (price >= 1000) {
-                return '$' + price.toLocaleString('en-US', {
-                    minimumFractionDigits: 2,
-                    maximumFractionDigits: 2
-                });
-            } else if (price >= 1) {
-                return '$' + price.toFixed(4);
-            } else {
-                return '$' + price.toFixed(6);
-            }
+            return '$' + price.toLocaleString('en-US', {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2
+            });
         }
 
         function formatChange(change) {
@@ -286,8 +279,7 @@
                 const changeClass = change24h >= 0 ? 'positive' : 'negative';
 
                 card.innerHTML = `
-                    <div class="crypto-name">${getCryptoDisplayName(id)}</div>
-                    <div class="crypto-symbol">(${getCryptoSymbol(id)})</div>
+                    <div class="crypto-name">${getCryptoDisplayName(id)} <span class="crypto-symbol">(${getCryptoSymbol(id)})</span></div>
                     <div class="price">${formatPrice(price)}</div>
                     <div class="change ${changeClass}">${formatChange(change24h)}</div>
                     <div class="stats">
